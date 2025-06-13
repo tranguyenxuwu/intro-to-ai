@@ -39,14 +39,14 @@ Khi chạy trên đồ thị mẫu 7 (không trọng số):
 
 Nhận xét: BFS và DFS có thời gian thực thi tương đương nhau trên các đồ thị nhỏ. Sự khác biệt về thời gian có thể trở nên đáng kể trên các đồ thị lớn hoặc không gian trạng thái rộng.
 
-### Kết Quả trên Đồ Thị Phức Tạp (12 nút, 17 cạnh)
+### Kết Quả trên Đồ Thị Phức Tạp (15 nút, 23 cạnh)
 
 Khi chạy trên đồ thị phức tạp từ S đến N:
 - BFS: Đường đi S → C → F → G → N với tổng trọng số 32
 - DFS: Đường đi S → A → D → E → L → M → N với tổng trọng số 28
 
 
-> [!Lưu ý chung] 
+> [!NOTE] 
 > - Tuy nói rằng việc tìm BFS và DFS điều có ưu điểm riêng, nhưng khi chạy thì phải đảm bảo để không bị rơi vào vòng lặp.
 > - Nếu không kiểm tra kĩ thì rất dễ xảy ra tình trạng lặp đi lặp lại xét 2 đỉnh
 > - Để giải quyết tình trạng này, ta sẽ chỉnh sửa input đồ thị vào, hoặc tạo ràng buộc `is_visited` kiểm tra các đỉnh đã thăm và không xét lại các đỉnh đó nữa 
