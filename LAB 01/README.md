@@ -46,8 +46,8 @@ Khi chạy trên đồ thị phức tạp từ S đến N:
 - DFS: Đường đi S → A → D → E → L → M → N với tổng trọng số 28
 
 Nhận xét: 
-- Bởi vì không xét trọng số, nên BFS cho ra đường đi có trọng số cao hơn `32`, chỉ hữu dụng nếu muốn tìm đường đi ngắn nhất mà bỏ qua các yếu tố khác
-- Mặt khác, DFS đi theo chiều sâu, nên có thể tình cờ kiếm được đường đi có trọng số thấp hơn `28` nhưng điều này không được đảm bảo
+- Bởi vì không xét trọng số, nên BFS cho ra đường đi có trọng số cao hơn, chỉ hữu dụng nếu muốn tìm đường đi ngắn nhất mà bỏ qua các yếu tố khác
+- Mặt khác, DFS đi theo chiều sâu, nên có thể tình cờ kiếm được đường đi có trọng số thấp hơn, nhưng điều này không được đảm bảo
 
 
 > [!NOTE] 
