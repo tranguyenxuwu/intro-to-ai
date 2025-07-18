@@ -2,194 +2,115 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import plotly.express as px
-from sklearn.naive_bayes import BernoulliNB, MultinomialNB
-from sklearn.feature_extraction.text import CountVectorizer
 import warnings
 warnings.filterwarnings('ignore')
 
-# Set page config
+# Import các hàm từ exec.py
+from exec import load_data, train_bernoulli_model, predict_text_bernoulli
+# Import các hàm từ exec_2.py
+from exec_2 import load_data_drug, train_gaussian_model, predict_drug
+
 st.set_page_config(
-    page_title="Naive Bayes Text Classifier",
+    page_title="Naive Bayes & Drug Prediction",
     page_icon="🔮",
     layout="wide"
 )
 
-# Custom CSS for better styling
-st.markdown("""
-<style>
-    .stMetric {
-        background-color: white;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.12);
-    }
-</style>
-""", unsafe_allow_html=True)
+st.title("🔮 Ứng dụng AI: Phân loại văn bản & Dự đoán thuốc")
 
-@st.cache_data
-def load_data():
-    """Load and return the education dataset"""
-    data = pd.read_csv('../Data/Education.csv')
-    return data
+# Lựa chọn chức năng
+option = st.selectbox(
+    "Chọn chức năng:",
+    ["Phân loại văn bản (Naive Bayes)", "Dự đoán thuốc (GaussianNB)"]
+)
 
-@st.cache_data
-def split_train_test(data, ratio_test=0.2):
-    """Split data into train and test sets"""
-    np.random.seed(42)
-    index_permu = np.random.permutation(len(data))
-    data_permu = data.iloc[index_permu]
-    test_size = int(len(data_permu) * ratio_test)
-    train_set = data_permu.iloc[:-test_size]
-    test_set = data_permu.iloc[-test_size:]
-    return train_set.reset_index(drop=True), test_set.reset_index(drop=True)
-
-@st.cache_resource
-def train_models():
-    """Train both Bernoulli and Multinomial Naive Bayes models"""
-    # Load and prepare data
-    data = load_data()
-    train_set, test_set = split_train_test(data)
-    
-    X_train, y_train = train_set['Text'], train_set['Label']
-    X_test, y_test = test_set['Text'], test_set['Label']
-    
-    # Convert labels to numeric
-    y_train_numeric = y_train.map({"positive": 1, "negative": 0})
-    
-    # Train Bernoulli model
-    bernoulli_vec = CountVectorizer(binary=True, stop_words='english')
-    X_train_bernoulli = bernoulli_vec.fit_transform(X_train)
-    bernoulli_model = BernoulliNB()
-    bernoulli_model.fit(X_train_bernoulli, y_train_numeric)
-    
-    # Train Multinomial model
-    multinomial_vec = CountVectorizer(stop_words='english')
-    X_train_multinomial = multinomial_vec.fit_transform(X_train)
-    multinomial_model = MultinomialNB()
-    multinomial_model.fit(X_train_multinomial, y_train_numeric)
-    
-    return bernoulli_model, bernoulli_vec, multinomial_model, multinomial_vec
-
-def main():
-    st.title("🔮 Naive Bayes Text Classification")
-    st.markdown("Enter text to classify as **positive** or **negative** educational content.")
+if option == "Phân loại văn bản (Naive Bayes)":
+    st.markdown("Nhập văn bản để phân loại là **positive** hoặc **negative**.")
     st.markdown("---")
-    
-    # Load trained models
-    with st.spinner("Loading models..."):
-        bernoulli_model, bernoulli_vec, multinomial_model, multinomial_vec = train_models()
-    
-    # Prediction interface
+    @st.cache_resource
+    def get_model():
+        data = load_data()
+        model, vectorizer = train_bernoulli_model(data)
+        return model, vectorizer
+    model, vectorizer = get_model()
     user_text = st.text_area(
-        "Enter text to classify:", 
-        placeholder="Type your educational text here...",
+        "Nhập văn bản cần phân loại:", 
+        placeholder="Nhập nội dung giáo dục...",
         height=100
     )
-    
-    # Submit button
-    submit_button = st.button("🚀 Classify Text", type="primary", use_container_width=True)
-    
+    submit_button = st.button("🚀 Phân loại", type="primary", use_container_width=True)
     if user_text and submit_button:
-        # Make predictions with both models
-        user_text_bernoulli = bernoulli_vec.transform([user_text])
-        user_text_multinomial = multinomial_vec.transform([user_text])
-        
-        bernoulli_pred_user = bernoulli_model.predict(user_text_bernoulli)[0]
-        bernoulli_proba_user = bernoulli_model.predict_proba(user_text_bernoulli)[0]
-        
-        multinomial_pred_user = multinomial_model.predict(user_text_multinomial)[0]
-        multinomial_proba_user = multinomial_model.predict_proba(user_text_multinomial)[0]
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("### 🎯 Bernoulli Naive Bayes")
-            pred_label = "Positive" if bernoulli_pred_user == 1 else "Negative"
-            confidence = max(bernoulli_proba_user)
-            
-            if pred_label == "Positive":
-                st.success(f"**Prediction:** {pred_label}")
-            else:
-                st.error(f"**Prediction:** {pred_label}")
-            st.info(f"**Confidence:** {confidence:.3f}")
-            
-            # Probability bar chart
-            prob_df = pd.DataFrame({
-                'Class': ['Negative', 'Positive'],
-                'Probability': bernoulli_proba_user
-            })
-            fig_prob = px.bar(
-                prob_df, x='Class', y='Probability', 
-                title="Class Probabilities - Bernoulli",
-                color='Class',
-                color_discrete_map={'Negative': 'red', 'Positive': 'green'}
-            )
-            fig_prob.update_layout(height=300)
-            st.plotly_chart(fig_prob, use_container_width=True)
-        
-        with col2:
-            st.markdown("### 📊 Multinomial Naive Bayes")
-            pred_label = "Positive" if multinomial_pred_user == 1 else "Negative"
-            confidence = max(multinomial_proba_user)
-            
-            if pred_label == "Positive":
-                st.success(f"**Prediction:** {pred_label}")
-            else:
-                st.error(f"**Prediction:** {pred_label}")
-            st.info(f"**Confidence:** {confidence:.3f}")
-            
-            # Probability bar chart
-            prob_df = pd.DataFrame({
-                'Class': ['Negative', 'Positive'],
-                'Probability': multinomial_proba_user
-            })
-            fig_prob = px.bar(
-                prob_df, x='Class', y='Probability',
-                title="Class Probabilities - Multinomial",
-                color='Class',
-                color_discrete_map={'Negative': 'red', 'Positive': 'green'}
-            )
-            fig_prob.update_layout(height=300)
-            st.plotly_chart(fig_prob, use_container_width=True)
-        
-        # Comparison summary
-        st.markdown("---")
-        st.markdown("### 📈 Model Comparison")
-        
-        bernoulli_result = "Positive" if bernoulli_pred_user == 1 else "Negative"
-        multinomial_result = "Positive" if multinomial_pred_user == 1 else "Negative"
-        
-        comparison_df = pd.DataFrame({
-            'Model': ['Bernoulli NB', 'Multinomial NB'],
-            'Prediction': [bernoulli_result, multinomial_result],
-            'Confidence': [max(bernoulli_proba_user), max(multinomial_proba_user)]
-        })
-        
-        st.dataframe(comparison_df, use_container_width=True)
-        
-        if bernoulli_result == multinomial_result:
-            st.success("✅ Both models agree on the prediction!")
+        label, proba = predict_text_bernoulli(user_text, model, vectorizer)
+        confidence = np.max(proba) * 100
+        if label == "positive":
+            st.success(f"**Kết quả dự đoán:** {label.title()}")
         else:
-            st.warning("⚠️ Models have different predictions - consider the confidence scores.")
-    
-    # Sample texts for testing
+            st.error(f"**Kết quả dự đoán:** {label.title()}")
+        st.info(f"**Xác suất tự tin:** {confidence:.1f}%")
+        prob_df = pd.DataFrame({
+            'Class': ['Negative', 'Positive'],
+            'Probability (%)': proba * 100
+        })
+        fig_prob = px.bar(
+            prob_df, x='Class', y='Probability (%)', 
+            title="Xác suất dự đoán (%)",
+            color='Class',
+            color_discrete_map={'Negative': 'red', 'Positive': 'green'}
+        )
+        fig_prob.update_layout(height=300)
+        st.plotly_chart(fig_prob, use_container_width=True)
     st.markdown("---")
-    st.markdown("### 💡 Try these sample texts:")
-    
+    st.markdown("### 💡 Thử các ví dụ sau:")
     sample_texts = [
         "This course provides excellent learning opportunities and valuable knowledge.",
-        "The educational program was poorly designed and not helpful.",
-        "Students gained comprehensive understanding through interactive lessons.",
-        "The teaching methods were ineffective and confusing."
+        "The educational program was poorly designed and not helpful."
     ]
-    
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Sample: Positive Text"):
-            st.text_area("Sample text:", value=sample_texts[0], key="sample1")
+        if st.button("Văn bản tích cực"):
+            st.text_area("Văn bản mẫu:", value=sample_texts[0], key="sample1")
     with col2:
-        if st.button("Sample: Negative Text"):
-            st.text_area("Sample text:", value=sample_texts[1], key="sample2")
+        if st.button("Văn bản tiêu cực"):
+            st.text_area("Văn bản mẫu:", value=sample_texts[1], key="sample2")
 
-if __name__ == "__main__":
-    main()
+elif option == "Dự đoán thuốc (GaussianNB)":
+    st.markdown("Nhập thông tin bệnh nhân để dự đoán loại thuốc phù hợp.")
+    st.markdown("---")
+    @st.cache_resource
+    def get_drug_model():
+        data = load_data_drug()
+        model, feature_columns, inv_label_map = train_gaussian_model(data)
+        return model, feature_columns, inv_label_map
+    model, feature_columns, inv_label_map = get_drug_model()
+    with st.form("drug_form"):
+        age = st.number_input("Age", min_value=0, max_value=120, value=50)
+        sex = st.selectbox("Sex", ["F", "M"])
+        bp = st.selectbox("BP", ["LOW", "NORMAL", "HIGH"])
+        cholesterol = st.selectbox("Cholesterol", ["NORMAL", "HIGH"])
+        na_to_k = st.number_input("Na_to_K", min_value=0.0, max_value=100.0, value=15.0, step=0.1)
+        submit_drug = st.form_submit_button("🚀 Dự đoán thuốc")
+    if submit_drug:
+        input_data = {
+            "Age": age,
+            "Sex": sex,
+            "BP": bp,
+            "Cholesterol": cholesterol,
+            "Na_to_K": na_to_k
+        }
+        label, proba = predict_drug(input_data, model, feature_columns, inv_label_map)
+        confidence = np.max(proba) * 100
+        st.success(f"**Loại thuốc dự đoán:** {label}")
+        st.info(f"**Xác suất tự tin:** {confidence:.1f}%")
+        # Hiển thị xác suất cho từng loại thuốc
+        drug_labels = [inv_label_map[i+1] for i in range(len(proba))]
+        prob_df = pd.DataFrame({
+            'Drug': drug_labels,
+            'Probability (%)': proba * 100
+        })
+        fig_prob = px.bar(
+            prob_df, x='Drug', y='Probability (%)', 
+            title="Xác suất dự đoán từng loại thuốc (%)",
+            color='Drug'
+        )
+        fig_prob.update_layout(height=300)
+        st.plotly_chart(fig_prob, use_container_width=True)
